@@ -1,0 +1,31 @@
+# Node modules and logs
+
+node_modules/
+npm-debug.log\*
+
+# Build output
+
+dist/
+
+# Environment variables
+
+.env
+
+# Docker-related files
+
+Dockerfile
+docker-compose.yml
+
+# Git and metadata files
+
+.git
+.gitignore
+
+# IDE and system files
+
+.vscode/
+
+# Test and coverage files
+
+_.test.js
+_.test.ts
