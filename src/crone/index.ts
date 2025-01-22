@@ -14,7 +14,7 @@ cron.schedule('*/30 * * * *', async () => {
   try {
     await scraperService.scrapeMatchCroneJob()
   } catch (error) {
-    console.error('Error occurred during the scraping task:', error)
+    logger.error('Error occurred during the scraping task:', error)
   }
 })
 
