@@ -10,7 +10,11 @@ import logger from '../../middleware/logger'
 import mongoose from 'mongoose'
 import { EventType } from '../../types/match'
 
-jest.mock('../../middleware/logger')
+jest.mock('../../middleware/logger', () => ({
+  info: jest.fn(),
+  error: jest.fn()
+}))
+
 jest.mock('../../models/match')
 
 describe('removeAllMatches', () => {
