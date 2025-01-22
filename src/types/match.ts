@@ -13,6 +13,7 @@ export enum EventType {
   Draw = 'draw',
   Guest = 'guest'
 }
+
 export type MatchBetType = {
   matchId: string
   bookmaker: string

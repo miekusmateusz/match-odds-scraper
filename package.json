@@ -12,7 +12,7 @@
     "lint": "eslint . ",
     "lint:fix": "eslint . --fix "
   },
-  "author": "",
+  "author": "mateusz.miekus.mail@gmail.com",
   "license": "ISC",
   "description": "node ts simple scraping app",
   "keywords": [
