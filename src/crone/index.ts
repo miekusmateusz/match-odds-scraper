@@ -6,7 +6,7 @@ import { removeAllMatches } from '../services/match/matchService'
 
 const scraperService = new FlashscoreScraperService()
 
-scraperService.scrapeMatchCroneJob()
+// scraperService.scrapeMatchCroneJob()
 
 // Schedule the cron scraping job to run every 30 minutes
 cron.schedule('*/30 * * * *', async () => {

@@ -26,6 +26,8 @@ describe('removeAllMatches', () => {
       .spyOn(Match, 'deleteMany')
       .mockResolvedValue({ deletedCount: 5, acknowledged: true })
 
+    jest.spyOn(logger, 'info')
+
     await removeAllMatches()
 
     expect(Match.deleteMany).toHaveBeenCalledWith({})
@@ -34,6 +36,7 @@ describe('removeAllMatches', () => {
 
   it('should log an error if deletion fails', async () => {
     const error = new Error('Database error')
+    jest.spyOn(logger, 'error')
 
     jest.spyOn(Match, 'deleteMany').mockRejectedValue(error)
 
@@ -84,14 +87,17 @@ describe('upsertMatches', () => {
   })
 
   it('should upsert matches successfully', async () => {
+    jest.spyOn(logger, 'info')
+
+    const mockDate = new Date()
     const matches = [
       {
-        startTime: '2023-01-01T12:00:00Z',
+        startTime: mockDate,
         host: 'Team A',
         guest: 'Team B',
         league: 'Premier League',
         bookmakers: {
-          bookmaker1: [1.5, 3.2, 2.8]
+          bookmaker1: ['1.5', '3.2', '2.8']
         }
       }
     ]
@@ -110,14 +116,17 @@ describe('upsertMatches', () => {
   })
 
   it('should log an error if upserting fails', async () => {
+    jest.spyOn(logger, 'error')
+
+    const mockDate = new Date()
     const matches = [
       {
-        startTime: '2023-01-01T12:00:00Z',
+        startTime: mockDate,
         host: 'Team A',
         guest: 'Team B',
         league: 'Premier League',
         bookmakers: {
-          bookmaker1: [1.5, 3.2, 2.8]
+          bookmaker1: ['1.5', '3.2', '2.8']
         }
       }
     ]
@@ -143,7 +152,7 @@ describe('fetchMatches', () => {
     const league = 'Premier League'
     const bookmaker = 'bookmaker1'
 
-    const mockFind = jest.spyOn(Match, 'find').mockResolvedValue([
+    jest.spyOn(Match, 'find').mockResolvedValue([
       {
         _id: 'match1',
         startTime: now,
@@ -160,16 +169,17 @@ describe('fetchMatches', () => {
 
     expect.objectContaining({
       league
-    }),
-      expect.objectContaining({
-        _id: 1,
-        startTime: 1,
-        host: 1,
-        guest: 1,
-        league: 1,
-        __v: 1,
-        'bookmakers.bookmaker1': 1
-      })
+    })
+
+    expect.objectContaining({
+      _id: 1,
+      startTime: 1,
+      host: 1,
+      guest: 1,
+      league: 1,
+      __v: 1,
+      'bookmakers.bookmaker1': 1
+    })
 
     expect(result).toHaveLength(1)
   })
@@ -213,7 +223,7 @@ describe('getLatestOdds', () => {
           }
         }
       ])
-    } as unknown as any)
+    } as any)
 
     const result = await getLatestOdds(matchQuery)
 
@@ -230,7 +240,7 @@ describe('getLatestOdds', () => {
       select: jest.fn().mockReturnThis(),
       lean: jest.fn().mockReturnThis(),
       exec: jest.fn().mockResolvedValue([])
-    } as unknown as any)
+    } as any)
 
     await expect(getLatestOdds(matchQuery)).rejects.toThrow(
       'Match with given Id not found'

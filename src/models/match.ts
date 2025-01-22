@@ -13,6 +13,14 @@ interface IMatch extends Document {
   bookmakers: Record<string, IOddsHistory[]>
 }
 
+export interface MatchDTO {
+  startTime: Date | null
+  host: string | null
+  guest: string | null
+  league: string | null
+  bookmakers: Record<string, string[]> | null
+}
+
 const matchSchema = new mongoose.Schema({
   startTime: { type: String, required: true },
   host: { type: String, required: true },

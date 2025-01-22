@@ -1,5 +1,6 @@
 import logger from '../../middleware/logger'
-import Match from '../../models/match'
+import Match, { MatchDTO } from '../../models/match'
+import { HttpError } from '../../types/common'
 import { CaluclateBetDto, EventType } from '../../types/match'
 
 /**
@@ -21,7 +22,7 @@ export const removeAllMatches = async (): Promise<void> => {
 /**
  * Retrieves the latest recorded odds for a given set of matches.
  *
- * This function takes an array of match queries (`matchQuery`), each containing a `matchId`, a selected `bookmaker`,
+ * This function takes an array of match queries, each containing a `matchId`, a selected `bookmaker`,
  * and an `eventType` (such as "Home", "Draw", or "Guest"). It then looks up the specified matches in the database
  * and retrieves the latest odds for each match from the selected bookmaker. The odds are sorted by timestamp,
  * and the most recent odds are returned for the specified event type.
@@ -54,9 +55,9 @@ export const getLatestOdds = async (
 
   if (!matches || matches?.length !== matchQuery.length) {
     if (matchQuery.length === 1) {
-      throw new Error('Match with given Id not found')
+      throw new HttpError('Match with given Id not found', 404)
     } else {
-      throw new Error('One of the matches with given Id not found')
+      throw new HttpError('One of the matches with given Id not found', 404)
     }
   }
 
@@ -77,8 +78,9 @@ export const getLatestOdds = async (
     const bookMakersOdds = match.bookmakers[selectedBookMaker]
 
     if (!bookMakersOdds) {
-      throw new Error(
-        `Bookmaker ${selectedBookMaker} not found for match ${match._id}`
+      throw new HttpError(
+        `Bookmaker ${selectedBookMaker} not found for match ${match._id}`,
+        404
       )
     }
 
@@ -98,7 +100,7 @@ export const getLatestOdds = async (
     const eventIndex = eventTypeIndexMap[selectedEventType]
 
     if (eventIndex === undefined || eventIndex === null) {
-      throw new Error('Invalid event type')
+      throw new HttpError('Invalid event type', 400)
     }
 
     // Map the odds for the match
@@ -108,7 +110,32 @@ export const getLatestOdds = async (
   return oddsByMatch
 }
 
-export const upsertMatches = async (matches: any[]): Promise<void> => {
+/**
+ * Inserts or updates match records in the database with associated bookmaker odds.
+ *
+ * This function processes an array of match objects, where each match contains details such as `startTime`, `host`, 
+ * `guest`, `league`, and `bookmakers`. It uses a bulk upsert operation to efficiently add new matches or update existing 
+ * ones in the database. If a match with the same `startTime`, `host`, `guest`, and `league` already exists, it updates 
+ * the record by appending the latest odds for each specified bookmaker. Otherwise, it creates a new record.
+ *
+ * The odds for each bookmaker are stored with a timestamp to maintain a history of changes. This allows tracking the 
+ * evolution of odds over time.
+ *
+ * If the operation succeeds, a log entry is created indicating success. If an error occurs during the upsert process, 
+ * an error is logged with details.
+ *
+ * @param {MatchDTO[]} matches - An array of match objects, each containing:
+ *   - `startTime`: The start time of the match.
+ *   - `host`: The name of the host team.
+ *   - `guest`: The name of the guest team.
+ *   - `league`: The league in which the match is played.
+ *   - `bookmakers`: An object where keys are bookmaker names, and values are odds for the match.
+ *
+ * @returns {Promise<void>} - A promise that resolves when the bulk upsert operation completes.
+ 
+**/
+
+export const upsertMatches = async (matches: MatchDTO[]): Promise<void> => {
   const now = new Date()
 
   try {
@@ -130,11 +157,13 @@ export const upsertMatches = async (matches: any[]): Promise<void> => {
         $push: {} as Record<string, any> // Dynamically build $push object for bookmakers
       }
 
-      // Prepare bookmakers for the $push update
-      for (const [bookmaker, odds] of Object.entries(bookmakers)) {
-        updateDoc.$push[`bookmakers.${bookmaker}`] = {
-          timestamp: now,
-          odds
+      if (bookmakers) {
+        // Prepare bookmakers for the $push update
+        for (const [bookmaker, odds] of Object.entries(bookmakers)) {
+          updateDoc.$push[`bookmakers.${bookmaker}`] = {
+            timestamp: now,
+            odds
+          }
         }
       }
 

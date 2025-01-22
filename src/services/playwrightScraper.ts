@@ -6,6 +6,7 @@ import {
 import logger from '../middleware/logger'
 import config from '../config/config'
 import { upsertMatches } from './match/matchService'
+import { MatchDTO } from '../models/match'
 
 export class FlashscoreScraperService {
   private baseUrl: string
@@ -51,7 +52,10 @@ export class FlashscoreScraperService {
   /**
    * Extract match data from a given match URL.
    */
-  private async scrapeMatchData(page: Page, matchUrl: string): Promise<any> {
+  private async scrapeMatchData(
+    page: Page,
+    matchUrl: string
+  ): Promise<MatchDTO | null> {
     await page.goto(matchUrl, { waitUntil: 'domcontentloaded' })
 
     await page.waitForSelector('.duelParticipant__startTime', {
@@ -145,7 +149,7 @@ export class FlashscoreScraperService {
   /**
    * Scrape scheduled match links from website.
    */
-  public async scrapeMatches(matchLinks: string[]): Promise<any[]> {
+  public async scrapeMatches(matchLinks: string[]): Promise<MatchDTO[]> {
     logger.info(`Scraping matches data for: ${matchLinks.length} links`)
 
     const browser = await this.initBrowser()
@@ -183,8 +187,8 @@ export class FlashscoreScraperService {
     const getHrefsOfMatches = async () => {
       const matchLinks: string[] = []
 
-      let matchDivs = await page.locator('.event__match')
-      let matchCount = await matchDivs.count()
+      const matchDivs = await page.locator('.event__match')
+      const matchCount = await matchDivs.count()
 
       for (let j = 0; j < matchCount; j++) {
         const matchDiv = matchDivs.nth(j)

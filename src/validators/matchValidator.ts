@@ -1,5 +1,11 @@
 import Joi from 'joi'
-import { BetType, EventType } from '../types/match'
+import { HttpError } from '../types/common'
+import {
+  BetType,
+  CalculateBetMappedQueryType,
+  CalculateBetQueryType,
+  EventType
+} from '../types/match'
 
 export const validateGetMatchesQuery = (query: any) => {
   const schema = Joi.object({
@@ -10,7 +16,9 @@ export const validateGetMatchesQuery = (query: any) => {
   return schema.validate(query)
 }
 
-const calculateBetQuerySchema = Joi.object({
+const calculateBetQuerySchema = Joi.object<
+  Required<CalculateBetMappedQueryType>
+>({
   betType: Joi.string().valid(BetType.SINGLE, BetType.AKO).required().messages({
     'any.required': 'Bet type is required',
     'string.valid': "Bet type must be either 'single' or 'ako'"
@@ -66,20 +74,24 @@ const calculateBetQuerySchema = Joi.object({
     .required()
 })
 
-export const validateCalculateBetQuery = (query: any) => {
-  const { matches } = query
+export const validateCalculateBetQuery = (
+  query: CalculateBetQueryType
+): Joi.ValidationResult<Required<CalculateBetMappedQueryType>> => {
+  const { betType, matches } = query
+
+  let mappedQuery: CalculateBetMappedQueryType = { betType: betType }
 
   if (matches) {
     try {
       const matchesArray = JSON.parse(decodeURIComponent(matches))
       if (!Array.isArray(matchesArray)) {
-        throw Error('Matches parameter should be of an array type')
+        throw Error
       }
-      query = { ...query, matches: matchesArray }
-    } catch (err) {
-      throw err
+      mappedQuery = { ...mappedQuery, matches: matchesArray }
+    } catch {
+      throw new HttpError('Matches parameter should be of an array type', 400)
     }
   }
 
-  return calculateBetQuerySchema.validate(query)
+  return calculateBetQuerySchema.validate(mappedQuery)
 }

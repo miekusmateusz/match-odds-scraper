@@ -1,18 +1,17 @@
 import express, { Request, Response } from 'express'
-import Match from '../models/match'
+import { getFromCache, setToCache } from '../cache'
+import { generateCalculateBetKey, generateGetMatchesKey } from '../cache/keys'
+import logger from '../middleware/logger'
 import {
   fetchMatches,
   getCumulatedBet,
-  getLatestOdds,
-  removeAllMatches
+  getLatestOdds
 } from '../services/match/matchService'
+import { HttpError } from '../types/common'
 import {
   validateCalculateBetQuery,
   validateGetMatchesQuery
 } from '../validators/matchValidator'
-import { getFromCache, setToCache } from '../cache'
-import { generateCalculateBetKey, generateGetMatchesKey } from '../cache/keys'
-import logger from '../middleware/logger'
 
 const router = express.Router()
 
@@ -40,7 +39,7 @@ router.get('/', async (req: Request, res: Response) => {
     // Validation
     const { error, value: validatedQuery } = validateGetMatchesQuery(req.query)
     if (error) {
-      res.status(400).json({ success: false, message: error.message })
+      res.status(400).json({ message: error.message })
       return
     }
 
@@ -61,32 +60,20 @@ router.get('/', async (req: Request, res: Response) => {
 
     res.status(200).json({ data: result })
   } catch (error) {
-    logger.error('Error fetching matches:', error)
-    res.status(500).json({ success: false, message: 'Internal server error' })
-  }
-})
+    if (error instanceof HttpError) {
+      res.status(error.statusCode).json({ error: error.message })
+      logger.error('Error fetching matches:', error.message)
+    } else {
+      res.status(500).json({ message: `Internal server error: ${error}` })
 
-/**
- * GET /api/matches/all
- * Fetch the today's pending matches with the history of odds.
- * Query Parameters:
- * - league (optional): Filter matches by league.
- * - bookmaker (optional): Filter odds by a specific bookmaker.
- */
-
-router.get('/all', async (req: Request, res: Response) => {
-  try {
-    const result = await Match.find()
-    res.status(200).json({ data: result })
-  } catch (error) {
-    console.error('Error fetching matches:', error)
-    res.status(500).json({ message: 'Internal server error' })
+      logger.error('Error fetching matches:', error)
+    }
   }
 })
 
 /**
  * GET /api/calculate-bet
- * Calculates the potential return of a bet based on selected matches and bookmakers.
+ * Calculates the bet based on selected matches and bookmaker.
  *
  * This route allows clients to calculate the potential return of a bet, either as a "single" or "ako" (accumulator) bet.
  * For a "single" bet, the calculation is based on a single match, while for an "ako" bet, the calculation considers multiple
@@ -107,7 +94,7 @@ router.get('/all', async (req: Request, res: Response) => {
  *
  * @returns {Object} - A JSON response with a `bet` field containing the total potential odds for the selected matches.
  *
- * @throws {Error} - Throws a `400` error if the query parameters are invalid, a `500` error if there is a server issue,
+ * @throws {Error} - Throws a `400` error if the query parameters are invalid, a `404` when matches are not found and a `500` error if there is a server issue,
  *                   or an error fetching odds and calculating the bet.
  *
  */
@@ -141,8 +128,13 @@ router.get('/calculate-bet', async (req: Request, res: Response) => {
     setToCache(cacheKey, bet)
     res.status(200).json({ bet })
   } catch (error) {
-    logger.error('Error calculating bet:', error)
-    res.status(500).json({ success: false, message: 'Internal server error' })
+    if (error instanceof HttpError) {
+      res.status(error.statusCode).json({ error: error.message })
+      logger.error('Error calculating bet:', error.message)
+    } else {
+      res.status(500).json({ message: `Internal server error: ${error}` })
+      logger.error('Error calculating bet:', error)
+    }
   }
 })
 
